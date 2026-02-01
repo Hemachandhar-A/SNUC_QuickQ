@@ -51,7 +51,6 @@ export const router = createBrowserRouter([
       { index: true, element: <Suspense fallback={<PageFallback />}><StudentHome /></Suspense> },
       { path: 'alerts', element: <Suspense fallback={<PageFallback />}><StudentAlerts /></Suspense> },
       { path: 'sustainability', element: <Suspense fallback={<PageFallback />}><StudentSustainability /></Suspense> },
-      { path: 'schedules', element: <Suspense fallback={<PageFallback />}><StudentHome /></Suspense> },
     ],
   },
   {

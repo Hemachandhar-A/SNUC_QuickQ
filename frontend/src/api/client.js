@@ -43,4 +43,11 @@ export const staff = {
   shockTrigger: (body) => api('staff/shock/trigger', { method: 'POST', body: JSON.stringify(body) }),
   shockResolve: () => api('staff/shock/resolve', { method: 'POST' }),
   shockStatus: () => api('staff/shock/status'),
+  state: () => api('staff/state'),
+  setEntry: (enabled) => api('staff/entry', { method: 'POST', body: JSON.stringify({ enabled }) }),
+  sendAlert: (body) => api('staff/alert', { method: 'POST', body: JSON.stringify(body) }),
+  alertsCount: () => api('staff/alerts/count'),
+  aiFeed: (params) => api(`staff/ai-feed?${new URLSearchParams(params || {})}`),
+  resolveAiFeedItem: (id) => api(`staff/ai-feed/${id}/resolve`, { method: 'POST' }),
+  resolveAllAiFeed: () => api('staff/ai-feed/resolve-all', { method: 'POST' }),
 };

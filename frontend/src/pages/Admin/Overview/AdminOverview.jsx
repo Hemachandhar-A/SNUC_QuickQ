@@ -6,16 +6,26 @@ import { Badge } from '../../../components/ui/Badge';
 export default function AdminOverview() {
   const [summary, setSummary] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [systemTime, setSystemTime] = useState(() => new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
 
   useEffect(() => {
     analytics.dailySummary({ limit: 20 }).then(setSummary).catch(() => setSummary([])).finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    const t = setInterval(() => setSystemTime(new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const peakStart = new Date();
+  peakStart.setHours(12, 0, 0, 0);
+  const peakEnd = new Date(peakStart.getTime() + 90 * 60 * 1000);
+  const peakLabel = `${peakStart.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} - ${peakEnd.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
   const kpis = [
-    { label: 'Average Wait Time', value: '4.2 mins', trend: '-12%', trendUp: false, bar: 70 },
-    { label: 'Peak Congestion Hour', value: '14:00 - 15:30', trend: '+5%', trendUp: true, sub: 'Zone: North Entrance Lobby' },
-    { label: 'Fairness Incidents', value: '2', trend: '-50%', trendUp: false, sub: 'Anomalies detected by Flow-AI' },
-    { label: 'Sustainability Score', value: '94%', trend: '+2%', trendUp: true, bar: 94 },
+    { label: 'Average Wait Time', value: '5 mins', trend: '-8%', trendUp: false, bar: 65, sub: 'Small mess: 12 p/min capacity' },
+    { label: 'Peak Congestion Hour', value: peakLabel, trend: '+3%', trendUp: true, sub: 'Zone: North Entrance Lobby' },
+    { label: 'Fairness Incidents', value: '1', trend: '-50%', trendUp: false, sub: 'Anomalies detected by Flow-AI' },
+    { label: 'Sustainability Score', value: '92%', trend: '+2%', trendUp: true, bar: 92 },
   ];
 
   const eventIcon = (type) => {
@@ -43,7 +53,7 @@ export default function AdminOverview() {
             className="px-4 py-2 rounded-lg bg-charcoal border border-slate text-white placeholder-gray-500 text-sm w-64 focus:ring-2 focus:ring-accent-blue focus:border-transparent"
             aria-label="Search"
           />
-          <span className="text-sm text-gray-500">System Time: {new Date().toLocaleTimeString('en-GB')}</span>
+          <span className="text-sm text-gray-500">System Time: {systemTime}</span>
         </div>
       </div>
 

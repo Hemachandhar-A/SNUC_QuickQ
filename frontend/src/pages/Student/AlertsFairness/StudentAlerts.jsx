@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useRealtimeStore } from '../../../store/realtimeStore';
 import { Card, CardHeader, CardBody } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
@@ -5,6 +6,7 @@ import { Button } from '../../../components/ui/Button';
 
 export default function StudentAlerts() {
   const alerts = useRealtimeStore((s) => s.alerts);
+  const [exceptionSubmitted, setExceptionSubmitted] = useState(false);
 
   const alertIcon = (type) => {
     if (type === 'warning' || type === 'surge') return '⚠️';
@@ -69,9 +71,13 @@ export default function StudentAlerts() {
             <CardBody>
               <p className="text-2xl font-semibold text-gray-500">NOT ACTIVE</p>
               <p className="text-sm text-gray-400 mt-1">Standard Queue Protocol applies to your account.</p>
-              <Button variant="secondary" className="mt-4 w-full" size="sm">
-                REQUEST EXCEPTION
-              </Button>
+              {exceptionSubmitted ? (
+                <p className="mt-4 text-sm text-accent-cyan">Request submitted. You&apos;ll be notified of the outcome.</p>
+              ) : (
+                <Button variant="secondary" className="mt-4 w-full" size="sm" onClick={() => setExceptionSubmitted(true)}>
+                  REQUEST EXCEPTION
+                </Button>
+              )}
             </CardBody>
           </Card>
           <Card>

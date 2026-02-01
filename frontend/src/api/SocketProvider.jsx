@@ -10,6 +10,8 @@ export function SocketProvider({ children }) {
   const setShockEvent = useRealtimeStore((s) => s.setShockEvent);
   const addAlert = useRealtimeStore((s) => s.addAlert);
   const setSustainability = useRealtimeStore((s) => s.setSustainability);
+  const setStaffState = useRealtimeStore((s) => s.setStaffState);
+  const setDetection = useRealtimeStore((s) => s.setDetection);
 
   useEffect(() => {
     const socket = createSocket();
@@ -25,6 +27,8 @@ export function SocketProvider({ children }) {
     socket.on(SOCKET_EVENTS.SHOCK_RESOLVED, () => setShockEvent(null));
     socket.on(SOCKET_EVENTS.ALERT, addAlert);
     socket.on(SOCKET_EVENTS.SUSTAINABILITY_UPDATE, setSustainability);
+    socket.on(SOCKET_EVENTS.STAFF_STATE, setStaffState);
+    socket.on(SOCKET_EVENTS.DETECTION_UPDATE, setDetection);
 
     return () => {
       socket.off(SOCKET_EVENTS.SYSTEM_STATUS);
@@ -34,9 +38,11 @@ export function SocketProvider({ children }) {
       socket.off(SOCKET_EVENTS.SHOCK_RESOLVED);
       socket.off(SOCKET_EVENTS.ALERT);
       socket.off(SOCKET_EVENTS.SUSTAINABILITY_UPDATE);
+      socket.off(SOCKET_EVENTS.STAFF_STATE);
+      socket.off(SOCKET_EVENTS.DETECTION_UPDATE);
       socket.disconnect();
     };
-  }, [setSystemStatus, setQueueUpdate, setWaitPrediction, setShockEvent, addAlert, setSustainability]);
+  }, [setSystemStatus, setQueueUpdate, setWaitPrediction, setShockEvent, addAlert, setSustainability, setStaffState, setDetection]);
 
   return children;
 }

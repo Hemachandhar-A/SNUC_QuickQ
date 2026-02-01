@@ -1,10 +1,15 @@
 import { io } from 'socket.io-client';
 
-const SOCKET_PATH = import.meta.env.DEV ? '' : '';
-const base = window.location.origin;
+// In dev, connect directly to backend to avoid Vite proxy ws ECONNABORTED on disconnect/HMR
+const socketBase =
+  import.meta.env.DEV && import.meta.env.VITE_SOCKET_URL
+    ? import.meta.env.VITE_SOCKET_URL
+    : import.meta.env.DEV
+      ? 'http://localhost:3001'
+      : window.location.origin;
 
 export function createSocket() {
-  return io(base, {
+  return io(socketBase, {
     path: '/socket.io',
     transports: ['websocket', 'polling'],
     reconnection: true,
@@ -24,4 +29,6 @@ export const SOCKET_EVENTS = {
   SYSTEM_STATUS: 'SYSTEM_STATUS',
   DAILY_SUMMARY: 'DAILY_SUMMARY',
   AUDIT_EVENT: 'AUDIT_EVENT',
+  STAFF_STATE: 'STAFF_STATE',
+  DETECTION_UPDATE: 'DETECTION_UPDATE',
 };

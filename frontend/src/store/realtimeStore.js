@@ -8,17 +8,28 @@ export const useRealtimeStore = create((set, get) => ({
   confidence: 0,
   bestTimeToArrive: null,
   capacityPercent: 0,
-  processRate: 45,
+  processRate: 12,
   shockEvent: null,
   alerts: [],
   sustainability: null,
+  // Staff state (entry enabled, etc.) — shared across dashboards
+  staffState: { entry_enabled: true },
+  // Live detection (queue monitor): boxes, fps, latency, temp
+  detection: null,
+  // Last N capacity % for congestion trend (Staff Dashboard)
+  queueHistory: [],
   setSystemStatus: (v) => set({ systemStatus: v }),
   setQueueUpdate: (data) =>
-    set({
-      queueCount: data.queueCount ?? get().queueCount,
-      congestionLevel: data.congestionLevel ?? get().congestionLevel,
-      capacityPercent: data.capacityPercent ?? get().capacityPercent,
-      processRate: data.processRate ?? get().processRate,
+    set((s) => {
+      const capacityPercent = data.capacityPercent ?? s.capacityPercent ?? 0;
+      const history = [capacityPercent, ...s.queueHistory].slice(0, 30);
+      return {
+        queueCount: data.queueCount ?? s.queueCount,
+        congestionLevel: data.congestionLevel ?? s.congestionLevel,
+        capacityPercent,
+        processRate: data.processRate ?? s.processRate,
+        queueHistory: history,
+      };
     }),
   setWaitPrediction: (data) =>
     set({
@@ -29,8 +40,10 @@ export const useRealtimeStore = create((set, get) => ({
   setShockEvent: (v) => set({ shockEvent: v }),
   addAlert: (alert) =>
     set((s) => ({
-      alerts: [{ ...alert, id: `${Date.now()}-${Math.random()}` }, ...s.alerts].slice(0, 50),
+      alerts: [{ ...alert, id: alert.id ?? `${Date.now()}-${Math.random()}` }, ...s.alerts].slice(0, 50),
     })),
   setSustainability: (v) => set({ sustainability: v }),
   clearAlerts: () => set({ alerts: [] }),
+  setStaffState: (v) => set({ staffState: typeof v === 'object' ? { ...get().staffState, ...v } : v }),
+  setDetection: (v) => set({ detection: v }),
 }));

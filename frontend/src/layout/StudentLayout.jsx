@@ -1,9 +1,9 @@
 import { Outlet, NavLink } from 'react-router-dom';
 import { useRealtimeStore } from '../store/realtimeStore';
+import { HeaderActions } from '../components/HeaderActions';
 
 const nav = [
-  { to: '/student', end: true, label: 'Dashboard' },
-  { to: '/student/schedules', label: 'Schedules' },
+  { to: '/student', end: true, label: 'Home' },
   { to: '/student/alerts', label: 'Alerts & Fairness' },
   { to: '/student/sustainability', label: 'Sustainability' },
 ];
@@ -13,9 +13,9 @@ export function StudentLayout() {
   const shockEvent = useRealtimeStore((s) => s.shockEvent);
 
   return (
-    <div className="min-h-screen bg-graphite">
+    <div className="min-h-screen bg-graphite w-full">
       <header className="sticky top-0 z-40 border-b border-slate/50 bg-graphite/95 backdrop-blur-md">
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6">
+        <div className="w-full px-4 sm:px-6">
           <div className="flex items-center justify-between h-14">
             <div className="flex items-center gap-4">
               <div className="w-8 h-8 rounded bg-accent-blue/20 flex items-center justify-center">
@@ -37,10 +37,7 @@ export function StudentLayout() {
                 </NavLink>
               ))}
             </nav>
-            <div className="flex items-center gap-2">
-              <span className="w-8 h-8 rounded-full bg-slate flex items-center justify-center text-sm" aria-hidden="true">🔔</span>
-              <span className="w-8 h-8 rounded-full bg-slate flex items-center justify-center text-xs font-medium text-gray-400" aria-hidden="true">U</span>
-            </div>
+            <HeaderActions />
           </div>
         </div>
         <div className="border-t border-slate/30 bg-charcoal/50 px-4 py-1.5 flex items-center gap-2 text-sm">
@@ -58,7 +55,7 @@ export function StudentLayout() {
           <span className="text-sm text-gray-400">{shockEvent.message}</span>
         </div>
       )}
-      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
+      <main className="w-full px-4 sm:px-6 py-6">
         <Outlet />
       </main>
     </div>

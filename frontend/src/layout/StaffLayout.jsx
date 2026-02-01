@@ -1,4 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom';
+import { HeaderActions } from '../components/HeaderActions';
 
 const nav = [
   { to: '/staff', end: true, label: 'Dashboard' },
@@ -8,8 +9,8 @@ const nav = [
 
 export function StaffLayout() {
   return (
-    <div className="min-h-screen bg-graphite flex">
-      <aside className="w-56 border-r border-slate/50 bg-charcoal/50 flex flex-col">
+    <div className="min-h-screen bg-graphite flex w-full">
+      <aside className="w-56 border-r border-slate/50 bg-charcoal/50 flex flex-col flex-shrink-0">
         <div className="p-4 border-b border-slate/30">
           <div className="flex items-center gap-2">
             <span className="text-status-green text-xl" aria-hidden="true">⚡</span>
@@ -43,9 +44,10 @@ export function StaffLayout() {
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-status-green" aria-hidden="true" />
             <span className="text-status-green text-sm font-medium">SYSTEM LIVE</span>
+            <HeaderActions />
           </div>
         </header>
-        <main className="flex-1 p-4 sm:p-6 overflow-auto">
+        <main className="flex-1 p-4 sm:p-6 overflow-auto w-full">
           <Outlet />
         </main>
       </div>
