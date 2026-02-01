@@ -5,6 +5,7 @@ import cors from 'cors';
 import { config } from './config.js';
 import { attachSocketHandlers } from './socket/socketHandler.js';
 import { startSimulation } from './services/simulatedSensors.js';
+import { startDetectionService } from './services/detectionService.js';
 import { eventBus, EVENTS } from './services/eventBus.js';
 import * as store from './store/analyticsStore.js';
 
@@ -39,6 +40,7 @@ eventBus.on(EVENTS.AUDIT_EVENT, (data) => store.pushAuditEvent(data));
 eventBus.on(EVENTS.SUSTAINABILITY_UPDATE, (data) => store.pushSustainability(data));
 
 startSimulation();
+startDetectionService();
 
 httpServer.listen(config.port, () => {
   console.log(`Backend: http://localhost:${config.port}`);

@@ -5,13 +5,13 @@
 
 import { eventBus, EVENTS } from './eventBus.js';
 
-const PROCESS_RATE_BASE = 45;
-const CAPACITY_BASE = 500;
+const PROCESS_RATE_BASE = 12; // small mess: 12 people per minute
+const CAPACITY_BASE = 80;
 
 export function predictWait(payload) {
   const { queueCount = 0, sectorId = 'main' } = payload || {};
-  const rate = PROCESS_RATE_BASE + Math.floor(Math.random() * 10);
-  const waitMinutes = Math.max(0, Math.min(45, Math.round((queueCount / rate) * 60)));
+  const rate = PROCESS_RATE_BASE;
+  const waitMinutes = Math.max(0, Math.min(30, Math.round((queueCount / rate))));
   const confidence = 0.88 + Math.random() * 0.1;
   return {
     waitMinutes,

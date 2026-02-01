@@ -16,10 +16,10 @@ let sustainabilityInterval;
 
 function randomDelta() {
   const r = Math.random();
-  if (r < 0.2) return -4 - Math.floor(Math.random() * 4);
-  if (r < 0.5) return -2;
-  if (r < 0.8) return 2;
-  return 3 + Math.floor(Math.random() * 6);
+  if (r < 0.25) return -2 - Math.floor(Math.random() * 2);
+  if (r < 0.5) return -1;
+  if (r < 0.8) return 1;
+  return 2 + Math.floor(Math.random() * 2);
 }
 
 function maybeTriggerShock() {
