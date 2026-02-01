@@ -26,7 +26,7 @@ router.get('/heatmap', (req, res) => {
 });
 
 router.get('/sustainability', (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
+  const limit = Math.min(parseInt(req.query.limit, 10) || 50, 500);
   res.json(store.getSustainabilityLog(limit));
 });
 

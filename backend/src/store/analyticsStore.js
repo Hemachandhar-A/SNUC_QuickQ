@@ -54,7 +54,32 @@ export function setHeatmapCell(dayKey, timeSlot, value) {
   heatmapCells.set(key, { dayKey, timeSlot, ...value });
 }
 
+// Realistic baseline intensity by hour (mess peaks: breakfast 7–9, lunch 12–14, dinner 19–21)
+function baselineSeverityByHour(hour) {
+  if (hour >= 7 && hour <= 9) return 45 + Math.random() * 25;
+  if (hour >= 12 && hour <= 14) return 55 + Math.random() * 35;
+  if (hour >= 19 && hour <= 21) return 50 + Math.random() * 30;
+  if (hour >= 6 && hour <= 22) return 15 + Math.random() * 25;
+  return 5 + Math.random() * 15;
+}
+
 export function getHeatmapData(days = 7) {
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  const filtered = temporalFlowSamples.filter((s) => new Date(s.timestamp).getTime() >= cutoff);
+
+  const byCell = new Map();
+  for (const s of filtered) {
+    const dt = new Date(s.timestamp);
+    const dayKey = dt.toISOString().slice(0, 10);
+    const hour = dt.getHours();
+    const slot = `${String(hour).padStart(2, '0')}:00`;
+    const key = `${dayKey}-${slot}`;
+    if (!byCell.has(key)) byCell.set(key, { sum: 0, count: 0 });
+    const cell = byCell.get(key);
+    cell.sum += s.capacityPercent ?? 0;
+    cell.count += 1;
+  }
+
   const result = [];
   for (let d = 0; d < days; d++) {
     const date = new Date();
@@ -62,8 +87,18 @@ export function getHeatmapData(days = 7) {
     const dayKey = date.toISOString().slice(0, 10);
     for (let h = 0; h < 24; h++) {
       const slot = `${String(h).padStart(2, '0')}:00`;
-      const k = `${dayKey}-${slot}`;
-      result.push(heatmapCells.get(k) || { dayKey, timeSlot: slot, severity: 0, events: [] });
+      const key = `${dayKey}-${slot}`;
+      const cell = byCell.get(key);
+      let severity = 0;
+      const events = [];
+      if (cell && cell.count > 0) {
+        severity = Math.min(100, Math.round(cell.sum / cell.count));
+      } else {
+        severity = Math.min(100, Math.round(baselineSeverityByHour(h)));
+      }
+      const stored = heatmapCells.get(key);
+      if (stored && stored.events && stored.events.length) events.push(...stored.events);
+      result.push({ dayKey, timeSlot: slot, severity, events });
     }
   }
   return result;

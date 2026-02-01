@@ -3,6 +3,7 @@ import { config } from '../config.js';
 import * as intelligence from './intelligenceEngine.js';
 import * as ml from './mlPlaceholder.js';
 import * as store from '../store/analyticsStore.js';
+import { simulateSustainability } from './sustainabilitySim.js';
 
 const SHOCK_TYPES = [
   { id: 'gas', label: 'Gas Delay' },
@@ -97,13 +98,15 @@ export function startSimulation() {
   shockCheckInterval = setInterval(maybeTriggerShock, 15000);
 
   sustainabilityInterval = setInterval(() => {
-    const wasteTrend = ['low', 'medium', 'high'][Math.floor(Math.random() * 3)];
-    const score = 70 + Math.floor(Math.random() * 25);
+    const queueState = intelligence.getQueueState();
+    const congestionMap = { high: 'HIGH', medium: 'MEDIUM', low: 'LOW' };
+    const payload = simulateSustainability({
+      queueSize: queueState.queueCount,
+      congestion: congestionMap[queueState.congestionLevel] || 'MEDIUM',
+      sensorConfidence: 0.9 + Math.random() * 0.08,
+    });
     eventBus.emit(EVENTS.SUSTAINABILITY_UPDATE, {
-      sustainabilityScore: score,
-      wasteTrend,
-      mostEatenMeal: ['Chicken Biryani', 'Dal Rice', 'Paneer Curry'][Math.floor(Math.random() * 3)],
-      highWasteWindow: wasteTrend === 'high' ? { start: '13:15', end: '13:45', zone: 'B' } : null,
+      ...payload,
       timestamp: new Date().toISOString(),
     });
   }, config.simulation.sustainabilityUpdateIntervalMs);
