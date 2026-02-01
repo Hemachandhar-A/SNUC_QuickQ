@@ -1,6 +1,7 @@
 # Hostel Mess Hub — Queue Intelligence Platform
 
 Deployment link: https://cyanic-globularly-keeley.ngrok-free.dev/login
+
 Government-grade, real-time operational intelligence for high-density institutional queue management (e.g. hostel mess, cafeterias). Single comprehensive guide for the full stack, ML pipeline, and deployment.
 
 **Stack:** React + Vite + Tailwind (Frontend) | Node.js + Express + Socket.IO (Backend) | optional Python/YOLOv8 (person detection).  
