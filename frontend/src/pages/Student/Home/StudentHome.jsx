@@ -20,6 +20,10 @@ export default function StudentHome() {
   const congestionLevel = useRealtimeStore((s) => s.congestionLevel);
   const bestTimeToArrive = useRealtimeStore((s) => s.bestTimeToArrive);
   const capacityPercent = useRealtimeStore((s) => s.capacityPercent);
+  const shockEvent = useRealtimeStore((s) => s.shockEvent);
+  const shockOrAlertActive = useRealtimeStore((s) => s.shockOrAlertActive);
+  const alerts = useRealtimeStore((s) => s.alerts);
+  const hasAlertOrShock = !!(shockEvent || shockOrAlertActive || (alerts && alerts.length > 0));
   const [reminderSet, setReminderSet] = useState(false);
   const [reminderMins, setReminderMins] = useState(null);
   const reminderTimeoutRef = useRef(null);
@@ -66,18 +70,33 @@ export default function StudentHome() {
     <div className="space-y-6 w-full">
       <h1 className="text-2xl font-bold text-white">Student Home (Arrival Intelligence)</h1>
 
+      {hasAlertOrShock && (
+        <div className="rounded-xl border-2 border-status-red bg-status-red/10 p-4 flex items-start gap-3">
+          <span className="text-status-red text-xl" aria-hidden="true">◆</span>
+          <div>
+            <p className="font-bold text-status-red">Active alert — estimated wait increased</p>
+            <p className="text-sm text-gray-300 mt-1">
+              {shockEvent?.message || (alerts?.[0]?.message) || 'Service delay or incident in progress. Wait time may be longer than usual.'}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+        <Card className={hasAlertOrShock ? 'border-status-red/50' : ''}>
           <CardBody className="p-6">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Predicted Wait Time</p>
             <div className="flex items-baseline gap-2 mt-2">
-              <span className="text-5xl font-bold text-white tabular-nums" aria-live="polite">
+              <span className={`text-5xl font-bold tabular-nums ${hasAlertOrShock ? 'text-status-red' : 'text-white'}`} aria-live="polite">
                 {waitMinutes}
               </span>
               <span className="text-xl text-gray-400">min</span>
             </div>
+            {hasAlertOrShock && (
+              <p className="text-sm text-status-amber mt-1">Wait time increased due to active incident.</p>
+            )}
             <div className="flex items-center gap-3 mt-4 flex-wrap">
-              <Badge variant={congestionVariant}>
+              <Badge variant={hasAlertOrShock ? 'danger' : congestionVariant}>
                 {congestionLevel === 'high' ? 'HIGH' : congestionLevel === 'medium' ? 'MEDIUM' : 'LOW'} CONGESTION
               </Badge>
               <span className="flex items-center gap-1.5 text-sm text-gray-400">

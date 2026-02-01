@@ -7,17 +7,23 @@ import { eventBus, EVENTS } from './eventBus.js';
 
 const PROCESS_RATE_BASE = 12; // small mess: 12 people per minute
 const CAPACITY_BASE = 80;
+const SHOCK_PENALTY_MINUTES = 18; // extra wait when shock/alert active
 
 export function predictWait(payload) {
-  const { queueCount = 0, sectorId = 'main' } = payload || {};
+  const { queueCount = 0, sectorId = 'main', shockOrAlertActive = false } = payload || {};
   const rate = PROCESS_RATE_BASE;
-  const waitMinutes = Math.max(0, Math.min(30, Math.round((queueCount / rate))));
-  const confidence = 0.88 + Math.random() * 0.1;
+  let waitMinutes = Math.max(0, Math.min(30, Math.round((queueCount / rate))));
+  if (shockOrAlertActive) {
+    waitMinutes = Math.min(45, waitMinutes + SHOCK_PENALTY_MINUTES);
+  }
+  let confidence = 0.88 + Math.random() * 0.1;
+  if (shockOrAlertActive) confidence = Math.min(confidence, 0.82);
   return {
     waitMinutes,
     confidence: Math.round(confidence * 100) / 100,
     queueCount,
     sectorId,
+    shockOrAlertActive: !!shockOrAlertActive,
     timestamp: new Date().toISOString(),
   };
 }
@@ -44,12 +50,34 @@ export function forecastDemand(payload) {
     const value = Math.round(base + (Math.random() - 0.5) * 40);
     points.push({ time: t.toISOString(), hour, value });
   }
+  const values = points.map((p) => p.value);
+  const mean = values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+  const variance = values.length
+    ? values.reduce((a, b) => a + (b - mean) ** 2, 0) / values.length
+    : 0;
+  const std = Math.sqrt(variance);
+  const riskWindows = [];
+  const thresholdHigh = mean + std;
+  const thresholdDelay = mean + std * 0.6;
+  for (let i = 0; i < points.length; i++) {
+    if (points[i].value >= thresholdHigh) riskWindows.push({ hour: points[i].hour, type: 'overflow', value: points[i].value });
+    else if (points[i].value >= thresholdDelay) riskWindows.push({ hour: points[i].hour, type: 'delay', value: points[i].value });
+  }
   return {
     scenario,
     horizonHours,
     points,
     confidence: 0.9 + Math.random() * 0.05,
     timestamp: new Date().toISOString(),
+    stats: {
+      mean: Math.round(mean),
+      variance: Math.round(variance),
+      std: Math.round(std),
+      min: Math.min(...values),
+      max: Math.max(...values),
+      riskWindowCount: riskWindows.length,
+    },
+    riskWindows,
   };
 }
 

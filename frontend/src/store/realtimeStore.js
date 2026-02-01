@@ -9,7 +9,10 @@ export const useRealtimeStore = create((set, get) => ({
   bestTimeToArrive: null,
   capacityPercent: 0,
   processRate: 12,
+  activeStaff: 4,
+  flowPerHour: 720,
   shockEvent: null,
+  shockOrAlertActive: false,
   alerts: [],
   sustainability: null,
   // Staff state (entry enabled, etc.) — shared across dashboards
@@ -18,7 +21,13 @@ export const useRealtimeStore = create((set, get) => ({
   detection: null,
   // Last N capacity % for congestion trend (Staff Dashboard)
   queueHistory: [],
-  setSystemStatus: (v) => set({ systemStatus: v }),
+  setSystemStatus: (v) =>
+    set((s) => ({
+      systemStatus: v,
+      ...(v && typeof v === 'object' && v.processRate != null && { processRate: v.processRate }),
+      ...(v && typeof v === 'object' && v.activeStaff != null && { activeStaff: v.activeStaff }),
+      ...(v && typeof v === 'object' && v.flowPerHour != null && { flowPerHour: v.flowPerHour }),
+    })),
   setQueueUpdate: (data) =>
     set((s) => {
       const capacityPercent = data.capacityPercent ?? s.capacityPercent ?? 0;
@@ -28,6 +37,8 @@ export const useRealtimeStore = create((set, get) => ({
         congestionLevel: data.congestionLevel ?? s.congestionLevel,
         capacityPercent,
         processRate: data.processRate ?? s.processRate,
+        activeStaff: data.activeStaff ?? s.activeStaff,
+        flowPerHour: data.flowPerHour ?? s.flowPerHour,
         queueHistory: history,
       };
     }),
@@ -36,6 +47,7 @@ export const useRealtimeStore = create((set, get) => ({
       waitMinutes: data.waitMinutes ?? get().waitMinutes,
       confidence: data.confidence ?? get().confidence,
       bestTimeToArrive: data.bestTimeToArrive ?? get().bestTimeToArrive,
+      shockOrAlertActive: data.shockOrAlertActive ?? get().shockOrAlertActive,
     }),
   setShockEvent: (v) => set({ shockEvent: v }),
   addAlert: (alert) =>

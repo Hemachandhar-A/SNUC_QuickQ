@@ -25,7 +25,11 @@ export default function DemandForecast() {
       .catch(() => setForecast(null));
   }, [scenario, range]);
 
-  const points = forecast?.points || Array.from({ length: 12 }, (_, i) => ({ hour: 8 + i * 2, value: 200 + Math.sin(i / 2) * 100 }));
+  const points = forecast?.points || Array.from({ length: 24 }, (_, i) => ({ hour: i, value: 200 + Math.sin(i / 4) * 80 }));
+  const stats = forecast?.stats || null;
+  const riskWindows = forecast?.riskWindows || [];
+  const maxVal = Math.max(...points.map((p) => p.value), 1);
+  const scenarioLabel = scenario.exam ? 'Exam Day' : scenario.weekend ? 'Weekend' : scenario.weather ? 'Weather Impact' : 'Normal';
 
   return (
     <div className="space-y-6">
@@ -65,30 +69,35 @@ export default function DemandForecast() {
             ))}
           </div>
           <div className="relative">
-            <p className="text-sm text-gray-400 mb-2">Projected Occupancy — Hourly granularity across all institutional nodes.</p>
-            <div className="flex gap-1 mb-2 text-xs">
-              <label className="flex items-center gap-1 text-accent-blue"><input type="checkbox" defaultChecked /> FORECAST LINE</label>
-              <label className="flex items-center gap-1 text-gray-400"><input type="checkbox" /> CONFIDENCE BAND (95%)</label>
-            </div>
-            <div className="h-64 flex items-end gap-0.5 relative">
-              {/* Risk bands */}
-              <div className="absolute inset-0 flex" aria-hidden="true">
-                <div className="w-[25%] bg-status-amber/20 border-l border-r border-status-amber/40" title="Service delay likelihood" />
-                <div className="flex-1" />
-                <div className="w-[20%] bg-status-red/20 border-l border-r border-status-red/40" title="Overflow window" />
+            <p className="text-sm text-gray-400 mb-2">
+              Scenario: <strong className="text-white">{scenarioLabel}</strong> — Projected occupancy (hourly). Small mess: 12 p/min max.
+            </p>
+            {stats && (
+              <div className="flex flex-wrap gap-4 mb-3 text-xs">
+                <span className="text-gray-400">Mean: <strong className="text-white">{stats.mean}</strong></span>
+                <span className="text-gray-400">Variance: <strong className="text-status-amber">{stats.variance}</strong></span>
+                <span className="text-gray-400">Std: <strong className="text-white">{stats.std}</strong></span>
+                <span className="text-gray-400">Min / Max: <strong className="text-white">{stats.min} / {stats.max}</strong></span>
+                <span className="text-gray-400">Risk windows: <strong className="text-status-red">{stats.riskWindowCount}</strong></span>
               </div>
-              {points.slice(0, 12).map((p, i) => (
-                <div
-                  key={i}
-                  className="flex-1 min-w-0 bg-accent-blue/70 rounded-t relative z-10 transition-all duration-300"
-                  style={{ height: `${Math.min(100, (p.value / 400) * 100)}%` }}
-                  title={`${p.hour || 8 + i * 2}:00 — ${p.value}`}
-                />
-              ))}
+            )}
+            <div className="h-64 flex items-end gap-0.5 relative">
+              {points.slice(0, 24).map((p, i) => {
+                const isRisk = riskWindows.some((r) => r.hour === (p.hour ?? i));
+                const isOverflow = riskWindows.some((r) => r.hour === (p.hour ?? i) && r.type === 'overflow');
+                return (
+                  <div
+                    key={i}
+                    className={`flex-1 min-w-0 rounded-t relative z-10 transition-all duration-300 ${isOverflow ? 'bg-status-red/80' : isRisk ? 'bg-status-amber/70' : 'bg-accent-blue/70'}`}
+                    style={{ height: `${Math.min(100, (p.value / maxVal) * 100)}%` }}
+                    title={`${p.hour ?? i}:00 — ${p.value}${isRisk ? ' (risk)' : ''}`}
+                  />
+                );
+              })}
             </div>
             <div className="flex justify-between mt-2 text-xs text-gray-500">
-              <span>08:00</span>
-              <span>20:00</span>
+              <span>00:00</span>
+              <span>23:00</span>
             </div>
             <div className="mt-4 flex gap-4 text-xs">
               <span className="flex items-center gap-1"><span className="w-4 h-2 rounded bg-status-amber/50" /> SERVICE DELAY LIKELIHOOD</span>
@@ -108,7 +117,7 @@ export default function DemandForecast() {
                   type="button"
                   role="switch"
                   aria-checked={scenario[s.id]}
-                  onClick={() => setScenario((prev) => ({ ...prev, [s.id]: !prev[s.id] }))}
+                  onClick={() => setScenario((prev) => ({ exam: false, weekend: false, weather: false, [s.id]: !prev[s.id] }))}
                   className={`relative w-12 h-6 rounded-full transition ${scenario[s.id] ? 'bg-accent-blue' : 'bg-slate'}`}
                 >
                   <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition left-1 ${scenario[s.id] ? 'translate-x-6' : ''}`} />
@@ -139,10 +148,29 @@ export default function DemandForecast() {
           </CardBody>
         </Card>
         <Card>
+          <CardHeader title="Effective Variance (by scenario)" />
+          <CardBody className="space-y-3">
+            {stats ? (
+              <>
+                <p className="text-sm text-gray-400">Current scenario: <strong className="text-white">{scenarioLabel}</strong></p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div><span className="text-gray-500">Mean</span><p className="font-semibold text-white">{stats.mean}</p></div>
+                  <div><span className="text-gray-500">Variance</span><p className="font-semibold text-status-amber">{stats.variance}</p></div>
+                  <div><span className="text-gray-500">Std dev</span><p className="font-semibold text-white">{stats.std}</p></div>
+                  <div><span className="text-gray-500">Risk windows</span><p className="font-semibold text-status-red">{stats.riskWindowCount}</p></div>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">Toggle Exam / Weekend / Weather to see variance change.</p>
+              </>
+            ) : (
+              <p className="text-sm text-gray-500">Load forecast to see variance stats.</p>
+            )}
+          </CardBody>
+        </Card>
+        <Card>
           <CardHeader title="Projected Food Demand" />
           <CardBody className="space-y-3">
-            <p className="text-sm text-white">Main Cafeteria: <strong>1,240 meals</strong></p>
-            <p className="text-sm text-white">North Hub Kiosks: <strong>450 meals</strong></p>
+            <p className="text-sm text-white">Main Cafeteria: <strong>{stats ? Math.round(stats.mean * 4.2) : 1_240} meals</strong></p>
+            <p className="text-sm text-white">North Hub Kiosks: <strong>{stats ? Math.round(stats.mean * 1.5) : 450} meals</strong></p>
             <p className="text-sm text-white">Staff Lounge: <strong>120 meals</strong></p>
             <Button size="sm" variant="secondary" className="w-full mt-2">Adjust Inventory Orders</Button>
           </CardBody>

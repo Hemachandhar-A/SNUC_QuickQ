@@ -11,20 +11,24 @@ export function attachSocketHandlers(io) {
       socket.emit(EVENTS.STAFF_STATE, staffState);
     } catch (_) {}
     const state = intelligence.getQueueState();
+    const shockActive = !!intelligence.getActiveShock();
     socket.emit(EVENTS.QUEUE_UPDATE, {
       queueCount: state.queueCount,
       congestionLevel: state.congestionLevel,
       processRate: state.processRate,
-      capacityPercent: Math.min(100, Math.round((state.queueCount / 80) * 100)),
+      activeStaff: state.activeStaff,
+      flowPerHour: state.flowPerHour,
+      capacityPercent: Math.min(100, Math.round((state.queueCount / (state.maxQueue || 80)) * 100)),
       timestamp: new Date().toISOString(),
     });
-    const pred = ml.predictWait({ queueCount: state.queueCount });
+    const pred = ml.predictWait({ queueCount: state.queueCount, shockOrAlertActive: shockActive });
     const best = ml.getBestTimeToArrive(state.queueCount, state.processRate);
     socket.emit(EVENTS.WAIT_PREDICTION, {
       waitMinutes: pred.waitMinutes,
       confidence: pred.confidence,
       queueCount: state.queueCount,
       bestTimeToArrive: best,
+      shockOrAlertActive: shockActive,
     });
 
     const onQueue = (data) => socket.emit(EVENTS.QUEUE_UPDATE, data);

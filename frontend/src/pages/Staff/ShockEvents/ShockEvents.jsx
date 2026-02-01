@@ -1,25 +1,35 @@
 import { useState, useEffect } from 'react';
 import { useRealtimeStore } from '../../../store/realtimeStore';
-import { staff } from '../../../api/client';
+import { staff, analytics } from '../../../api/client';
 import { Card, CardHeader, CardBody } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 
 const INCIDENT_TYPES = [
-  { id: 'gas', label: 'Gas Delay', icon: '🔥' },
-  { id: 'power', label: 'Power Issue', icon: '⚡' },
-  { id: 'staff', label: 'Staff Shortage', icon: '👥' },
-  { id: 'service', label: 'Service Delay', icon: '⏱' },
+  { id: 'gas', label: 'Gas Delay', icon: '🔥', recoveryMins: 45 },
+  { id: 'power', label: 'Power Issue', icon: '⚡', recoveryMins: 15 },
+  { id: 'staff', label: 'Staff Shortage', icon: '👥', recoveryMins: 30 },
+  { id: 'service', label: 'Service Delay', icon: '⏱', recoveryMins: 20 },
 ];
 
 export default function ShockEvents() {
   const shockEvent = useRealtimeStore((s) => s.shockEvent);
+  const queueCount = useRealtimeStore((s) => s.queueCount);
+  const waitMinutes = useRealtimeStore((s) => s.waitMinutes);
+  const processRate = useRealtimeStore((s) => s.processRate) ?? 12;
   const [activeType, setActiveType] = useState('gas');
   const [shockMode, setShockMode] = useState(!!shockEvent);
   const [loadingTrigger, setLoadingTrigger] = useState(false);
   const [loadingResolve, setLoadingResolve] = useState(false);
+  const [incidentHistory, setIncidentHistory] = useState([]);
 
   useEffect(() => {
     setShockMode(!!shockEvent);
+  }, [shockEvent]);
+
+  useEffect(() => {
+    analytics.dailySummary({ limit: 15 }).then((list) => {
+      setIncidentHistory(list.filter((e) => e.type === 'shock' || e.type === 'shock_resolved' || e.type === 'alert'));
+    }).catch(() => setIncidentHistory([]));
   }, [shockEvent]);
 
   const handleTrigger = async () => {
@@ -40,7 +50,18 @@ export default function ShockEvents() {
     setLoadingResolve(false);
   };
 
-  const current = shockEvent || { type: INCIDENT_TYPES.find((t) => t.id === activeType)?.label || 'Gas Delay', message: 'A Gas Delay has been detected. Please remain in your current location until further notice. Elevators are grounded.' };
+  const currentType = INCIDENT_TYPES.find((t) => t.id === (shockEvent?.id || activeType)) || INCIDENT_TYPES[0];
+  const current = shockEvent || {
+    type: currentType.label,
+    message: `${currentType.label} has been detected. Please remain in your current location until further notice.`,
+  };
+  const recoveryMins = currentType.recoveryMins ?? 45;
+  const timelineSteps = [
+    { t: 'NOW', title: 'Shock Protocol Active', sub: `Event: ${current.type}.`, active: shockMode },
+    { t: `T + ${Math.round(recoveryMins * 0.35)}m`, title: 'Personnel Redirection', sub: '82% Historic Confidence.' },
+    { t: `T + ${Math.round(recoveryMins * 0.7)}m`, title: 'Stabilization', sub: 'Manual check required.' },
+    { t: `T + ${recoveryMins}m`, title: 'Full Restoration', sub: 'Estimated normalization.', done: !shockMode },
+  ];
 
   return (
     <div className="space-y-6">
@@ -137,14 +158,30 @@ export default function ShockEvents() {
             </CardBody>
           </Card>
           <Card>
-            <CardHeader title="Recovery Timeline" subtitle="Predicted normalization window." />
+            <CardHeader title="Live Stats" subtitle="Current queue and wait (affected by shock)." />
+            <CardBody className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-xs text-gray-500">Queue Now</p>
+                <p className="text-xl font-bold text-white tabular-nums">{queueCount ?? 0}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Est. Wait</p>
+                <p className="text-xl font-bold text-white tabular-nums">{waitMinutes ?? 0}m</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Process Rate</p>
+                <p className="text-xl font-bold text-white tabular-nums">{processRate} p/min</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Recovery Est.</p>
+                <p className="text-xl font-bold text-white tabular-nums">{recoveryMins}m</p>
+              </div>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardHeader title="Recovery Timeline" subtitle={`Predicted normalization: ${recoveryMins}m for ${currentType.label}.`} />
             <CardBody className="space-y-3">
-              {[
-                { t: 'NOW', title: 'Shock Protocol Active', sub: 'Event: Gas Delay detected.', active: true },
-                { t: 'T + 15m', title: 'Personnel Redirection', sub: '82% Historic Confidence.' },
-                { t: 'T + 45m', title: 'Pressure Equalization', sub: 'Manual check required.' },
-                { t: 'T + 90m', title: 'Full Restoration', sub: 'Estimated normalization.', done: true },
-              ].map((step) => (
+              {timelineSteps.map((step) => (
                 <div key={step.t} className="flex gap-3">
                   <span className={`w-4 h-4 rounded-full flex-shrink-0 mt-0.5 ${step.active ? 'bg-status-red' : step.done ? 'bg-status-green' : 'bg-slate'}`} aria-hidden="true" />
                   <div>
@@ -156,16 +193,26 @@ export default function ShockEvents() {
             </CardBody>
           </Card>
           <Card className="border border-accent-blue/30">
-            <CardHeader title="INSTITUTIONAL INTELLIGENCE" />
-            <CardBody>
-              <p className="text-2xl font-bold text-accent-cyan">15% FASTER RESOLUTION</p>
-              <p className="text-sm text-gray-400 mt-1">Current response pattern is exceeding historical benchmarks for high-flow gas incidents by 4 minutes.</p>
+            <CardHeader title="Incident History" />
+            <CardBody className="max-h-32 overflow-y-auto space-y-2">
+              {incidentHistory.length === 0 ? (
+                <p className="text-xs text-gray-500">No recent shock/alert events.</p>
+              ) : (
+                incidentHistory.slice(0, 6).map((e, i) => (
+                  <div key={e.id || i} className="flex items-center gap-2 text-xs">
+                    <span className={e.type === 'shock_resolved' ? 'text-status-green' : 'text-status-amber'}>{e.type === 'shock_resolved' ? '✓' : '◆'}</span>
+                    <span className="text-gray-400">{e.type}</span>
+                    <span className="text-gray-500">{e.timestamp ? new Date(e.timestamp).toLocaleTimeString() : ''}</span>
+                  </div>
+                ))
+              )}
             </CardBody>
           </Card>
           <Card>
             <CardHeader title="AI Confidence" />
             <CardBody>
               <p className="text-xl font-bold text-white">HIGH: 94%</p>
+              <p className="text-xs text-gray-500 mt-1">Recovery estimate based on incident type and historic resolution times.</p>
             </CardBody>
           </Card>
         </div>

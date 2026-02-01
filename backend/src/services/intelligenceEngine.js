@@ -8,6 +8,9 @@ let activeShock = null;
 let entryEnabled = true; // in-memory cache; db is source of truth
 const PROCESS_RATE = 12; // small mess: at most 12 people per minute
 const MAX_QUEUE = 80;
+const ACTIVE_STAFF = 4;
+
+export const OPERATIONAL_CONSTANTS = { PROCESS_RATE, MAX_QUEUE, ACTIVE_STAFF };
 
 function syncEntryEnabledFromDb() {
   const state = db.getStaffState();
@@ -16,13 +19,15 @@ function syncEntryEnabledFromDb() {
 syncEntryEnabledFromDb();
 
 function emitWaitPrediction() {
-  const result = predictWait({ queueCount, sectorId: 'main' });
+  const shockOrAlert = !!activeShock;
+  const result = predictWait({ queueCount, sectorId: 'main', shockOrAlertActive: shockOrAlert });
   const best = getBestTimeToArrive(queueCount, PROCESS_RATE);
   eventBus.emit(EVENTS.WAIT_PREDICTION, {
     waitMinutes: result.waitMinutes,
     confidence: result.confidence,
     queueCount,
     bestTimeToArrive: best,
+    shockOrAlertActive: shockOrAlert,
   });
 }
 
@@ -31,6 +36,9 @@ function emitQueueUpdate() {
     queueCount,
     congestionLevel,
     processRate: PROCESS_RATE,
+    activeStaff: ACTIVE_STAFF,
+    flowPerHour: PROCESS_RATE * 60,
+    maxQueue: MAX_QUEUE,
     capacityPercent: Math.min(100, Math.round((queueCount / MAX_QUEUE) * 100)),
     timestamp: new Date().toISOString(),
   });
@@ -52,6 +60,10 @@ export function getSystemStatus() {
     source: 'Main Hall Mess',
     shockEvent: activeShock,
     entryEnabled,
+    processRate: PROCESS_RATE,
+    activeStaff: ACTIVE_STAFF,
+    flowPerHour: PROCESS_RATE * 60,
+    maxQueue: MAX_QUEUE,
     timestamp: new Date().toISOString(),
   };
 }
@@ -84,5 +96,12 @@ export function tick(queueDelta) {
 }
 
 export function getQueueState() {
-  return { queueCount, congestionLevel, processRate: PROCESS_RATE };
+  return {
+    queueCount,
+    congestionLevel,
+    processRate: PROCESS_RATE,
+    activeStaff: ACTIVE_STAFF,
+    flowPerHour: PROCESS_RATE * 60,
+    maxQueue: MAX_QUEUE,
+  };
 }

@@ -23,6 +23,7 @@ export const auth = {
 export const system = {
   status: () => api('system/status'),
   queue: () => api('system/queue'),
+  stats: () => api('system/stats'),
 };
 
 export const ai = {
@@ -37,6 +38,8 @@ export const analytics = {
   auditStats: () => api('analytics/audit/stats'),
   heatmap: (params) => api(`analytics/heatmap?${new URLSearchParams(params || {})}`),
   sustainability: (params) => api(`analytics/sustainability?${new URLSearchParams(params || {})}`),
+  temporalFlow: (params) => api(`analytics/temporal-flow?${new URLSearchParams(params || {})}`),
+  overviewKpis: () => api('analytics/overview-kpis'),
 };
 
 export const staff = {

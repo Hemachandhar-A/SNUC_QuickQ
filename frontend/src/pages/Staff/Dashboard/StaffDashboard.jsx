@@ -5,9 +5,6 @@ import { Card, CardHeader, CardBody } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 
-const PROCESS_RATE = 12;
-const FLOW_PER_HOUR = PROCESS_RATE * 60;
-const ACTIVE_STAFF = 4;
 
 function getCongestionColor(pct) {
   if (pct <= 33) return 'bg-status-green';
@@ -29,6 +26,9 @@ export default function StaffDashboard() {
   const queueHistory = useRealtimeStore((s) => s.queueHistory);
   const staffState = useRealtimeStore((s) => s.staffState);
   const systemStatus = useRealtimeStore((s) => s.systemStatus);
+  const processRate = useRealtimeStore((s) => s.processRate) ?? 12;
+  const flowPerHour = useRealtimeStore((s) => s.flowPerHour) ?? processRate * 60;
+  const activeStaff = useRealtimeStore((s) => s.activeStaff) ?? 4;
 
   const [aiFeedItems, setAiFeedItems] = useState([]);
   const [incidentCount, setIncidentCount] = useState(0);
@@ -164,14 +164,14 @@ export default function StaffDashboard() {
         <Card>
           <CardBody>
             <p className="text-xs text-gray-500 uppercase">Current Flow</p>
-            <p className="text-3xl font-bold text-white mt-1">{FLOW_PER_HOUR}/hr</p>
-            <p className="text-sm text-gray-400 mt-1">Max {PROCESS_RATE} p/min</p>
+            <p className="text-3xl font-bold text-white mt-1">{flowPerHour}/hr</p>
+            <p className="text-sm text-gray-400 mt-1">Max {processRate} p/min</p>
           </CardBody>
         </Card>
         <Card>
           <CardBody>
             <p className="text-xs text-gray-500 uppercase">Active Staff</p>
-            <p className="text-3xl font-bold text-white mt-1">{ACTIVE_STAFF}</p>
+            <p className="text-3xl font-bold text-white mt-1">{activeStaff}</p>
             <span className="inline-flex items-center gap-1 mt-1 text-sm text-status-green"><span className="w-2 h-2 rounded-full bg-status-green" /> Active</span>
           </CardBody>
         </Card>

@@ -30,4 +30,13 @@ router.get('/sustainability', (req, res) => {
   res.json(store.getSustainabilityLog(limit));
 });
 
+router.get('/temporal-flow', (req, res) => {
+  const days = Math.min(parseInt(req.query.days, 10) || 7, 30);
+  res.json(store.getTemporalFlow(days));
+});
+
+router.get('/overview-kpis', (_req, res) => {
+  res.json(store.getOverviewKpis());
+});
+
 export default router;

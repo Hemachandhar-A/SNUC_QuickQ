@@ -5,42 +5,88 @@ import { Badge } from '../../../components/ui/Badge';
 
 export default function AdminOverview() {
   const [summary, setSummary] = useState([]);
+  const [kpis, setKpis] = useState(null);
+  const [temporalFlow, setTemporalFlow] = useState([]);
+  const [flowDays, setFlowDays] = useState(7);
   const [loading, setLoading] = useState(true);
   const [systemTime, setSystemTime] = useState(() => new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
 
   useEffect(() => {
-    analytics.dailySummary({ limit: 20 }).then(setSummary).catch(() => setSummary([])).finally(() => setLoading(false));
-  }, []);
+    Promise.all([
+      analytics.dailySummary({ limit: 20 }),
+      analytics.overviewKpis(),
+      analytics.temporalFlow({ days: flowDays }),
+    ])
+      .then(([s, k, t]) => {
+        setSummary(s || []);
+        setKpis(k || null);
+        setTemporalFlow(Array.isArray(t) ? t : []);
+      })
+      .catch(() => {
+        setSummary([]);
+        setKpis(null);
+        setTemporalFlow([]);
+      })
+      .finally(() => setLoading(false));
+  }, [flowDays]);
 
   useEffect(() => {
     const t = setInterval(() => setSystemTime(new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })), 1000);
     return () => clearInterval(t);
   }, []);
 
-  const peakStart = new Date();
-  peakStart.setHours(12, 0, 0, 0);
-  const peakEnd = new Date(peakStart.getTime() + 90 * 60 * 1000);
-  const peakLabel = `${peakStart.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} - ${peakEnd.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
-  const kpis = [
-    { label: 'Average Wait Time', value: '5 mins', trend: '-8%', trendUp: false, bar: 65, sub: 'Small mess: 12 p/min capacity' },
-    { label: 'Peak Congestion Hour', value: peakLabel, trend: '+3%', trendUp: true, sub: 'Zone: North Entrance Lobby' },
-    { label: 'Fairness Incidents', value: '1', trend: '-50%', trendUp: false, sub: 'Anomalies detected by Flow-AI' },
-    { label: 'Sustainability Score', value: '92%', trend: '+2%', trendUp: true, bar: 92 },
-  ];
+  const peakLabel = kpis?.peakCongestionDay
+    ? `${kpis.peakCongestionHour || '12:00'} (${kpis.peakCongestionDay})`
+    : '12:00 - 13:30';
+
+  const kpiRows = kpis
+    ? [
+        {
+          label: 'Average Wait Time',
+          value: `${kpis.avgWaitMinutes ?? 5} mins`,
+          trend: '-8%',
+          trendUp: false,
+          bar: Math.min(100, 100 - (kpis.avgWaitMinutes ?? 5) * 3),
+          sub: 'Small mess: 12 p/min capacity',
+        },
+        {
+          label: 'Peak Congestion Hour',
+          value: peakLabel,
+          trend: '+3%',
+          trendUp: true,
+          sub: 'Zone: North Entrance Lobby',
+        },
+        {
+          label: 'Fairness Incidents',
+          value: String(kpis.fairnessIncidents24h ?? 0),
+          trend: '-50%',
+          trendUp: false,
+          sub: 'Last 24h — anomalies detected by Flow-AI',
+        },
+        {
+          label: 'Sustainability Score',
+          value: `${kpis.sustainabilityScore ?? 92}%`,
+          trend: '+2%',
+          trendUp: true,
+          bar: kpis.sustainabilityScore ?? 92,
+        },
+      ]
+    : [
+        { label: 'Average Wait Time', value: '5 mins', trend: '-8%', trendUp: false, bar: 65, sub: 'Small mess: 12 p/min capacity' },
+        { label: 'Peak Congestion Hour', value: peakLabel, trend: '+3%', trendUp: true, sub: 'Zone: North Entrance Lobby' },
+        { label: 'Fairness Incidents', value: '0', trend: '-50%', trendUp: false, sub: 'Anomalies detected by Flow-AI' },
+        { label: 'Sustainability Score', value: '92%', trend: '+2%', trendUp: true, bar: 92 },
+      ];
 
   const eventIcon = (type) => {
     if (type === 'resolved' || type === 'shock_resolved') return '✓';
     if (type === 'optimization') return '⚙';
     if (type === 'warning') return '⚠';
-    if (type === 'surge' || type === 'shock') return '👤';
+    if (type === 'surge' || type === 'shock') return '◆';
     return '🕐';
   };
-  const eventVariant = (type) => {
-    if (type === 'resolved' || type === 'shock_resolved') return 'success';
-    if (type === 'warning') return 'warning';
-    if (type === 'shock') return 'danger';
-    return 'info';
-  };
+
+  const maxCap = temporalFlow.length ? Math.max(...temporalFlow.map((r) => r.avgCapacity || 0), 1) : 1;
 
   return (
     <div className="space-y-6">
@@ -58,7 +104,7 @@ export default function AdminOverview() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.map((k) => (
+        {kpiRows.map((k) => (
           <Card key={k.label}>
             <CardBody>
               <p className="text-xs text-gray-500 uppercase">{k.label}</p>
@@ -113,50 +159,91 @@ export default function AdminOverview() {
                 <div>
                   <p className="font-semibold text-white">Alert Systems</p>
                   <p className="text-status-green text-sm">READY - NO DELAYS</p>
-                  <p className="text-xs text-gray-400 mt-1">Primary and redundant push protocols verified at 15:00 GMT.</p>
+                  <p className="text-xs text-gray-400 mt-1">Primary and redundant push protocols verified.</p>
                 </div>
               </div>
             </CardBody>
           </Card>
           <Card className="mt-6">
-            <CardHeader title="Temporal Flow Analysis" action={<div className="flex gap-2"><button type="button" className="text-xs text-gray-400">Today</button><button type="button" className="text-xs text-accent-cyan font-medium">7 Days</button><button type="button" className="text-xs text-gray-400">30 Days</button></div>} />
+            <CardHeader
+              title="Temporal Flow Analysis"
+              subtitle="Avg wait & capacity by day (from live simulation)"
+              action={
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFlowDays(1)}
+                    className={`text-xs ${flowDays === 1 ? 'text-accent-cyan font-medium' : 'text-gray-400'}`}
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFlowDays(7)}
+                    className={`text-xs ${flowDays === 7 ? 'text-accent-cyan font-medium' : 'text-gray-400'}`}
+                  >
+                    7 Days
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFlowDays(30)}
+                    className={`text-xs ${flowDays === 30 ? 'text-accent-cyan font-medium' : 'text-gray-400'}`}
+                  >
+                    30 Days
+                  </button>
+                </div>
+              }
+            />
             <CardBody>
-              <div className="h-48 flex items-end gap-1">
-                {['MON 18', 'TUE 19', 'WED', 'THU 21', 'FRI 22', 'SAT 23', 'SUN 24', 'TODAY'].map((label, i) => (
-                  <div key={label} className="flex-1 flex flex-col items-center gap-1">
-                    <div className="w-full bg-accent-blue/60 rounded-t" style={{ height: `${40 + Math.random() * 50}%` }} />
-                    <span className="text-xs text-gray-500">{label}</span>
+              {temporalFlow.length === 0 ? (
+                <p className="text-sm text-gray-500 py-8 text-center">No flow data yet. Data builds as the simulation runs.</p>
+              ) : (
+                <>
+                  <div className="h-48 flex items-end gap-1">
+                    {temporalFlow.slice(0, 14).map((row, i) => (
+                      <div key={row.dayKey || i} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+                        <div
+                          className="w-full bg-accent-blue/60 rounded-t transition-all"
+                          style={{ height: `${Math.min(100, (row.avgCapacity || 0) / maxCap * 100)}%` }}
+                          title={`${row.dayKey}: ${row.avgWait ?? 0}m avg wait, ${row.avgCapacity ?? 0}% capacity`}
+                        />
+                        <span className="text-xs text-gray-500 truncate w-full text-center">
+                          {row.dayKey ? new Date(row.dayKey).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' }) : row.dayKey}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                  <div className="flex justify-between mt-2 text-xs text-gray-500">
+                    <span>Avg capacity % (bar height)</span>
+                    <span>Avg wait: {temporalFlow.length ? Math.round(temporalFlow.reduce((a, r) => a + (r.avgWait || 0), 0) / temporalFlow.length) : 0}m</span>
+                  </div>
+                </>
+              )}
             </CardBody>
           </Card>
         </div>
         <div>
           <Card>
-            <CardHeader title="Daily Summary Feed" action={<a href="#" className="text-sm text-accent-blue hover:underline">View History</a>} />
+            <CardHeader title="Daily Summary Feed" action={<span className="text-sm text-accent-blue">Live</span>} />
             <CardBody className="max-h-96 overflow-y-auto space-y-3">
               {loading ? (
                 <p className="text-gray-500 text-sm">Loading…</p>
               ) : summary.length === 0 ? (
-                <>
-                  {[
-                    { type: 'resolved', time: '14:22', title: 'Shock Event Resolved: Gate 12', msg: 'Congestion spike cleared via Dynamic Re-routing Alpha.' },
-                    { type: 'optimization', time: '12:05', title: 'Flow Pattern Alpha Applied', msg: 'Intelligence engine re-balanced loads for anticipated peak.' },
-                    { type: 'warning', time: '09:15', title: 'Sensor Node 421 Down', msg: 'Redundant node 422 tracking. Maintenance scheduled.' },
-                    { type: 'surge', time: '08:42', title: 'Major Surge: Terminal B North', msg: '450+ arrivals in 10-min window. Capacity at 85%.' },
-                    { type: 'scheduled', time: '06:00', title: 'Scheduled Maintenance', msg: 'System check completed.' },
-                  ].map((e, i) => (
-                    <div key={i} className="flex gap-3 p-3 rounded-lg bg-charcoal/50">
-                      <span className={`text-${e.type === 'resolved' ? 'status-green' : e.type === 'warning' ? 'status-amber' : e.type === 'surge' ? 'accent-blue' : 'gray-500'}`} aria-hidden="true">{eventIcon(e.type)}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-white text-sm">{e.title}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{e.msg}</p>
-                        <p className="text-xs text-gray-500 mt-1">{e.time}</p>
-                      </div>
+                [
+                  { type: 'resolved', time: '14:22', title: 'Shock Event Resolved', msg: 'Congestion spike cleared via Dynamic Re-routing.' },
+                  { type: 'optimization', time: '12:05', title: 'Flow Pattern Applied', msg: 'Intelligence engine re-balanced loads for anticipated peak.' },
+                  { type: 'warning', time: '09:15', title: 'Sensor Node Down', msg: 'Redundant node tracking. Maintenance scheduled.' },
+                  { type: 'surge', time: '08:42', title: 'Major Surge: Terminal B North', msg: '450+ arrivals in 10-min window. Capacity at 85%.' },
+                ].map((e, i) => (
+                  <div key={i} className="flex gap-3 p-3 rounded-lg bg-charcoal/50">
+                    <span className={`${e.type === 'resolved' ? 'text-status-green' : e.type === 'warning' ? 'text-status-amber' : e.type === 'surge' ? 'text-accent-blue' : 'text-gray-500'}`} aria-hidden="true">{eventIcon(e.type)}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-white text-sm">{e.title}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{e.msg}</p>
+                      <p className="text-xs text-gray-500 mt-1">{e.time}</p>
                     </div>
-                  ))}
-                </>
+                  </div>
+                ))
               ) : (
                 summary.map((e, i) => (
                   <div key={e.id || i} className="flex gap-3 p-3 rounded-lg bg-charcoal/50">

@@ -11,4 +11,14 @@ router.get('/queue', (_req, res) => {
   res.json(intelligence.getQueueState());
 });
 
+router.get('/stats', (_req, res) => {
+  const state = intelligence.getQueueState();
+  const status = intelligence.getSystemStatus();
+  res.json({
+    ...state,
+    ...status,
+    flowPerHour: state.flowPerHour ?? state.processRate * 60,
+  });
+});
+
 export default router;

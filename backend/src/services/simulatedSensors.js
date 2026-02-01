@@ -1,6 +1,8 @@
 import { eventBus, EVENTS } from './eventBus.js';
 import { config } from '../config.js';
 import * as intelligence from './intelligenceEngine.js';
+import * as ml from './mlPlaceholder.js';
+import * as store from '../store/analyticsStore.js';
 
 const SHOCK_TYPES = [
   { id: 'gas', label: 'Gas Delay' },
@@ -68,13 +70,28 @@ export function startSimulation() {
 
   predictionInterval = setInterval(() => {
     const state = intelligence.getQueueState();
-    if (!intelligence.getActiveShock()) {
-      eventBus.emit(EVENTS.WAIT_PREDICTION, {
-        queueCount: state.queueCount,
-        congestionLevel: state.congestionLevel,
-        timestamp: new Date().toISOString(),
-      });
-    }
+    const shockActive = !!intelligence.getActiveShock();
+    const pred = ml.predictWait({
+      queueCount: state.queueCount,
+      sectorId: 'main',
+      shockOrAlertActive: shockActive,
+    });
+    const best = ml.getBestTimeToArrive(state.queueCount, state.processRate);
+    const capacityPercent = Math.min(100, Math.round((state.queueCount / (state.maxQueue || 80)) * 100));
+    store.pushTemporalFlow({
+      queueCount: state.queueCount,
+      waitMinutes: pred.waitMinutes,
+      capacityPercent,
+    });
+    eventBus.emit(EVENTS.WAIT_PREDICTION, {
+      waitMinutes: pred.waitMinutes,
+      confidence: pred.confidence,
+      queueCount: state.queueCount,
+      congestionLevel: state.congestionLevel,
+      bestTimeToArrive: best,
+      shockOrAlertActive: shockActive,
+      timestamp: new Date().toISOString(),
+    });
   }, config.simulation.waitPredictionIntervalMs);
 
   shockCheckInterval = setInterval(maybeTriggerShock, 15000);

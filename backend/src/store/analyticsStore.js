@@ -6,10 +6,12 @@ const dailySummary = [];
 const auditLog = [];
 const heatmapCells = new Map();
 const sustainabilityLog = [];
+const temporalFlowSamples = []; // { timestamp, queueCount, waitMinutes, capacityPercent }
 
 const MAX_DAILY = 200;
 const MAX_AUDIT = 2000;
 const MAX_SUSTAINABILITY = 500;
+const MAX_TEMPORAL = 7 * 24 * 60; // 7 days at 1 sample/min
 
 export function pushDailySummary(event) {
   dailySummary.unshift({ id: Date.now(), ...event, timestamp: new Date().toISOString() });
@@ -74,4 +76,71 @@ export function pushSustainability(entry) {
 
 export function getSustainabilityLog(limit = 50) {
   return sustainabilityLog.slice(0, limit);
+}
+
+export function pushTemporalFlow(sample) {
+  temporalFlowSamples.unshift({
+    timestamp: new Date().toISOString(),
+    queueCount: sample.queueCount ?? 0,
+    waitMinutes: sample.waitMinutes ?? 0,
+    capacityPercent: sample.capacityPercent ?? 0,
+  });
+  if (temporalFlowSamples.length > MAX_TEMPORAL) temporalFlowSamples.pop();
+}
+
+export function getTemporalFlow(days = 7) {
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  const filtered = temporalFlowSamples.filter((s) => new Date(s.timestamp).getTime() >= cutoff);
+  const byDay = new Map();
+  for (const s of filtered) {
+    const dayKey = s.timestamp.slice(0, 10);
+    if (!byDay.has(dayKey)) {
+      byDay.set(dayKey, { dayKey, samples: [], avgWait: 0, avgQueue: 0, avgCapacity: 0, peakHour: 0 });
+    }
+    const row = byDay.get(dayKey);
+    row.samples.push(s);
+  }
+  const result = [];
+  for (let d = days - 1; d >= 0; d--) {
+    const date = new Date();
+    date.setDate(date.getDate() - d);
+    const dayKey = date.toISOString().slice(0, 10);
+    const row = byDay.get(dayKey);
+    if (row && row.samples.length > 0) {
+      const n = row.samples.length;
+      row.avgWait = Math.round(row.samples.reduce((a, x) => a + (x.waitMinutes ?? 0), 0) / n);
+      row.avgQueue = Math.round(row.samples.reduce((a, x) => a + (x.queueCount ?? 0), 0) / n);
+      row.avgCapacity = Math.round(row.samples.reduce((a, x) => a + (x.capacityPercent ?? 0), 0) / n);
+      result.push(row);
+    } else {
+      result.push({
+        dayKey,
+        avgWait: 0,
+        avgQueue: 0,
+        avgCapacity: 0,
+        samples: [],
+      });
+    }
+  }
+  return result;
+}
+
+export function getOverviewKpis() {
+  const flow = getTemporalFlow(7);
+  const validFlow = flow.filter((r) => r.samples && r.samples.length > 0);
+  const avgWait = validFlow.length
+    ? Math.round(validFlow.reduce((a, r) => a + r.avgWait, 0) / validFlow.length)
+    : 5;
+  const peakDay = validFlow.length ? validFlow.reduce((a, r) => (r.avgCapacity > (a.avgCapacity || 0) ? r : a), {}) : null;
+  const auditStats = getAuditStats();
+  const sust = sustainabilityLog.slice(0, 10);
+  const sustScore = sust.length ? Math.round(sust.reduce((a, e) => a + (e.sustainabilityScore ?? 75), 0) / sust.length) : 92;
+  return {
+    avgWaitMinutes: avgWait,
+    peakCongestionDay: peakDay?.dayKey || new Date().toISOString().slice(0, 10),
+    peakCongestionHour: peakDay ? '12:00' : '12:00',
+    fairnessIncidents24h: auditStats.flagged24h || 0,
+    sustainabilityScore: sustScore,
+    temporalFlow: flow,
+  };
 }
