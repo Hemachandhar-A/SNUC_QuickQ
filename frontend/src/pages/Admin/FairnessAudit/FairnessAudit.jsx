@@ -34,6 +34,11 @@ export default function FairnessAudit() {
   const riskVariant = (r) => (r === 'red' ? 'danger' : r === 'amber' ? 'warning' : 'success');
   const eventVariant = (e) => (e === 'Re-entry Violation' ? 'danger' : e === 'Staff Override' ? 'warning' : 'info');
 
+  const today = new Date();
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const dateRangeLabel = `${weekAgo.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} — ${today.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -43,7 +48,7 @@ export default function FairnessAudit() {
         </div>
         <div className="flex items-center gap-2">
           <button type="button" className="px-3 py-2 rounded-lg border border-slate text-sm text-gray-400 flex items-center gap-1">
-            <span aria-hidden="true">📅</span> Oct 20, 2023 — Oct 27, 2023
+            <span aria-hidden="true">📅</span> {dateRangeLabel}
           </button>
           <Button size="sm">Export Compliance Report</Button>
           <span className="w-8 h-8 rounded-full bg-slate flex items-center justify-center text-sm" aria-hidden="true">👤</span>

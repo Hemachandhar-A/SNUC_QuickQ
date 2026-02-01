@@ -51,7 +51,7 @@ export function HeaderActions() {
         </button>
         {notifOpen && (
           <div
-            className="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto rounded-xl bg-charcoal border border-slate shadow-xl z-50 py-2"
+            className="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto rounded-xl bg-charcoal border border-slate shadow-xl z-[100] py-2"
             role="menu"
             aria-label="Recent alerts"
           >
@@ -88,7 +88,7 @@ export function HeaderActions() {
         </button>
         {profileOpen && (
           <div
-            className="absolute right-0 top-full mt-2 w-56 rounded-xl bg-charcoal border border-slate shadow-xl z-50 py-2"
+            className="absolute right-0 top-full mt-2 w-56 rounded-xl bg-charcoal border border-slate shadow-xl z-[100] py-2"
             role="menu"
             aria-label="Profile menu"
           >

@@ -33,7 +33,7 @@ export function AdminLayout() {
         </nav>
       </aside>
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 border-b border-slate/50 flex items-center justify-between px-4 bg-graphite/95 backdrop-blur-md">
+        <header className="sticky top-0 z-40 h-14 border-b border-slate/50 flex items-center justify-between px-4 bg-graphite/95 backdrop-blur-md">
           <span className="text-gray-400 text-sm">Admin</span>
           <div className="flex items-center gap-2">
             <span className="text-gray-500 text-sm hidden sm:inline">System Time: {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
